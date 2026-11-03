@@ -8,6 +8,7 @@ import {
 } from '@/lib/ministry-data'
 import {
   evaluateCabinet, rankAll, topForPosition, socioFit, compFit, quadraOf,
+  optimizeCabinet,
   typeByRu, CONTEXT_WEIGHT, type CabinetEval, type RankedCabinet, type PairNote,
 } from '@/lib/ministry-engine'
 import { QUADRA_COLORS } from '@/lib/relations'
@@ -402,15 +403,11 @@ function BuilderTab({ builder, setBuilder, context, setContext, custom, setCusto
   const pool = useMemo(() => [...Object.values(POLITICIANS), ...custom], [custom])
 
   const autoFill = () => {
-    const nb: Builder = {}
-    const used = new Set<string>()
-    const order = [...POSITIONS].sort((a, b) => b.weight - a.weight)
-    for (const pos of order) {
-      const best = topForPosition(pos.id, 103, pool)
-        .find(c => !used.has(c.pol.id))
-      if (best) { nb[pos.id] = best.pol.id; used.add(best.pol.id) }
-    }
-    setBuilder(nb)
+    // «По максимуму» = жадный старт по эффективному весу эпохи + подъём
+    // на холм: полный счёт evaluateCabinet этой эпохи (вес кресел эпохи
+    // × сплочённость) растёт, пока есть выгодные замены и обмены.
+    // У каждой эпохи свой компромисс — свой расклад.
+    setBuilder(optimizeCabinet(context, pool))
   }
 
   const ev = useMemo(() => evaluateCabinet(builder, context, [], custom), [builder, context, custom])
@@ -439,12 +436,15 @@ function BuilderTab({ builder, setBuilder, context, setContext, custom, setCusto
           В списках — только профильные кандидаты: силовики на оборону и МВД, юристы на юстицию,
           медики на здравоохранение. Менеджеры допущены на министерства — как Резников и Умёров в жизни.
           Растущие политики — в группе «Новые лица», своих кандидатов добавляйте в панели справа.
+          Автосбор оптимизирует полный счёт кабинета под выбранную эпоху: в войне дороже оборона,
+          МВД и энергетика, в кризисе — финансы и экономика, в реформах — юстиция и цифра.
+          Сменили эпоху — жмите «Собрать по максимуму» заново: расклад пересоберётся.
         </p>
         <div className="grid gap-2.5 md:grid-cols-2">
           {POSITIONS.map(pos => {
             const polId = builder[pos.id] ?? null
             const pol = polId ? (pool.find(p => p.id === polId) ?? null) : null
-            const picks = topForPosition(pos.id, 4, pool)
+            const picks = topForPosition(pos.id, 4, pool, context)
             const groups = candidateGroups(pool, custom, pos)
             const cFit = pol ? Math.round(compFit(pol, pos) * 100) : null
             const sFit = pol ? socioFit(pol.type, pos) : null
