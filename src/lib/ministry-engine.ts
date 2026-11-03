@@ -13,7 +13,7 @@
 import { TYPES, type SocioType, type QuadraId } from './socionics-data'
 import { relationBetween, PAIR_SCORE } from './relations'
 import {
-  POSITIONS, POLITICIANS, CABINETS, isEligible,
+  POSITIONS, POLITICIANS, CABINETS, isEligible, fieldsOf,
   type Position, type Politician, type CompKey, type ContextKind,
 } from './ministry-data'
 
@@ -175,7 +175,10 @@ export function evaluateCabinet(
 
   const comp = compDen > 0 ? (compNum / compDen) * 100 : 0
   const socio = socioDen > 0 ? (socioNum / socioDen) * 10 : 0
-  const total = 0.45 * comp + 0.25 * socio + 0.30 * cohesion
+  // Итоговая формула: компетентность — половина счёта, соционика — 15%,
+  // сплочённость — 30% (было 45/25/30: компетентность поднята,
+  // вклад соционики снижен — по отзывам игроков)
+  const total = 0.55 * comp + 0.15 * socio + 0.30 * cohesion
 
   return {
     comp, socio, cohesion, total,
@@ -216,9 +219,24 @@ export function rankAll(
   return list.sort((a, b) => b.eval.total - a.eval.total)
 }
 
+/** Профессиональный индекс кандидата на должность: 0–1.
+ *  compFit — закрытие требуемых минимумов по компетенциям;
+ *  профильная сфера должности (pos.core) решает: специалист — 1,
+ *  допущенный из смежной сферы — 0.4. Без этого слагаемого
+ *  врач с хорошим управлением обгоняет профильного министра:
+ *  Ульяна Супрун на цифре вместо Фёдорова, Кинах — в энергетиках. */
+export function posFit(pol: Politician, pos: Position): number {
+  const fieldFit = fieldsOf(pol).includes(pos.core) ? 1 : 0.4
+  return 0.65 * compFit(pol, pos) + 0.35 * fieldFit
+}
+
 /** Лучшие кандидаты на должность по совокупной посадке.
  *  pool — доступный пул (по умолчанию — все политики датасета);
- *  отбираются только кандидаты, допустимые на должность по сферам. */
+ *  отбираются только кандидаты, допустимые на должность по сферам.
+ *  Ранжирование: 75% — профессиональный индекс posFit
+ *  (компетенции + профильная сфера), 25% — соционика.
+ *  Вклад соционики снижен по просьбе игроков: сначала реальное дело,
+ *  потом тип. */
 export function topForPosition(
   posId: string, n = 5, pool: Politician[] = Object.values(POLITICIANS),
 ): { pol: Politician; score: number }[] {
@@ -226,7 +244,7 @@ export function topForPosition(
   if (!pos) return []
   return pool
     .filter(pol => isEligible(pol, pos))
-    .map(pol => ({ pol, score: 0.6 * compFit(pol, pos) + 0.4 * (socioFit(pol.type, pos) / 10) }))
+    .map(pol => ({ pol, score: 0.75 * posFit(pol, pos) + 0.25 * (socioFit(pol.type, pos) / 10) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, n)
 }
