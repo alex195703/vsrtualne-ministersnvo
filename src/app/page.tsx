@@ -13,7 +13,7 @@ import {
 } from '@/lib/ministry-engine'
 import { QUADRA_COLORS, RELATION_NAME, type RelationKind } from '@/lib/relations'
 import { QUADRAS, TYPES, type QuadraId } from '@/lib/socionics-data'
-import { useL, useBi, useLang, setLang, type Lang, type Bi } from '@/lib/i18n'
+import { useL, useBi, useLang, setLang, type Lang, type Bi, useTitle } from '@/lib/i18n'
 
 const COMP_KEYS: CompKey[] = ['adm', 'econ', 'dip', 'cri']
 const STORAGE_KEY = 'vm-builder-v1'
@@ -731,6 +731,8 @@ function RankRow({ r, place }: { r: RankedCabinet; place: number }) {
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>('history')
+  useTitle('Віртуальне міністерство — уряди України через соціоніку', 'Виртуальное министерство — правительства Украины через соционику')
+
   const [builder, setBuilder] = useState<Builder>({})
   const [context, setContext] = useState<ContextKind>('war')
   const [custom, setCustom] = useState<Politician[]>([])
