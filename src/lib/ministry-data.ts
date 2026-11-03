@@ -66,12 +66,18 @@ export interface Position {
    *  допущены почти везде (как Резников и Умёров в жизни),
    *  а вот врач не назначается обороной, и наоборот */
   allow: FieldId[]
+  /** профильная сфера должности: её специалисты — первый выбор
+   *  в автосборе и подсказках; остальные допущенные — запас.
+   *  Без этого Ульяна Супрун обгоняет Михаила Фёдорова на цифре,
+   *  а Анатолий Кинах — энергетиков */
+  core: FieldId
 }
 
 export const POSITIONS: Position[] = [
   {
     id: 'pm', icon: '🏛', title: 'Премьер-министр', weight: 2.0,
     allow: ALL_FIELDS,
+    core: 'gov',
     req: { adm: 9, econ: 7, dip: 7, cri: 8 },
     prefs: { tf: { val: 'logic', w: 1 }, rat: { val: 'rational', w: 0.6 }, ei: { val: 'extravert', w: 0.3 } },
     ideal: ['ЛСЭ', 'СЛЭ', 'ЛИЭ'],
@@ -80,6 +86,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'vicepm', icon: '🗂', title: 'Первый вице-премьер', weight: 1.1,
     allow: ALL_FIELDS,
+    core: 'gov',
     req: { adm: 8, econ: 6, dip: 5, cri: 6 },
     prefs: { ei: { val: 'extravert', w: 0.4 }, tf: { val: 'logic', w: 0.5 } },
     ideal: ['ЛСЭ', 'СЭЭ'],
@@ -88,6 +95,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'finance', icon: '💰', title: 'Министр финансов', weight: 1.4,
     allow: ['fin', 'biz', 'law'],
+    core: 'fin',
     req: { adm: 7, econ: 9, dip: 3, cri: 5 },
     prefs: { tf: { val: 'logic', w: 1 }, rat: { val: 'rational', w: 0.7 } },
     ideal: ['ЛСИ', 'ЛИЭ'],
@@ -96,6 +104,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'economy', icon: '📈', title: 'Министр экономики', weight: 1.1,
     allow: ['fin', 'biz'],
+    core: 'fin',
     req: { adm: 6, econ: 8, dip: 5, cri: 4 },
     prefs: { tf: { val: 'logic', w: 1 }, ns: { val: 'intuition', w: 0.6 } },
     ideal: ['ЛИЭ', 'ЛИИ'],
@@ -104,6 +113,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'defense', icon: '🛡', title: 'Министр обороны', weight: 1.4,
     allow: ['mil', 'law', 'biz'],
+    core: 'mil',
     req: { adm: 7, econ: 2, dip: 4, cri: 9 },
     prefs: { ns: { val: 'sensing', w: 1 }, tf: { val: 'logic', w: 0.8 }, rat: { val: 'rational', w: 0.3 } },
     ideal: ['СЛЭ', 'ЛСЭ'],
@@ -112,6 +122,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'mfa', icon: '🌐', title: 'Министр иностранных дел', weight: 1.1,
     allow: ['gov', 'law', 'soc', 'biz'],
+    core: 'gov',
     req: { adm: 5, econ: 4, dip: 9, cri: 4 },
     prefs: { tf: { val: 'ethics', w: 1 }, ns: { val: 'intuition', w: 0.7 }, ei: { val: 'extravert', w: 0.4 } },
     ideal: ['ЭИЭ', 'ИЭЭ', 'ЭИИ'],
@@ -120,6 +131,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'mvd', icon: '👮', title: 'Министр внутренних дел', weight: 1.1,
     allow: ['mil', 'law', 'biz'],
+    core: 'mil',
     req: { adm: 6, econ: 1, dip: 3, cri: 8 },
     prefs: { ns: { val: 'sensing', w: 1 }, tf: { val: 'logic', w: 0.6 }, ei: { val: 'extravert', w: 0.3 } },
     ideal: ['СЛЭ', 'ЛСЭ'],
@@ -128,6 +140,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'justice', icon: '⚖️', title: 'Министр юстиции', weight: 0.7,
     allow: ['law'],
+    core: 'law',
     req: { adm: 7, econ: 3, dip: 3, cri: 3 },
     prefs: { tf: { val: 'logic', w: 0.8 }, rat: { val: 'rational', w: 0.8 } },
     ideal: ['ЛСИ', 'ЭСИ'],
@@ -136,6 +149,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'energy', icon: '⚡', title: 'Министр энергетики', weight: 1.0,
     allow: ['en', 'fin', 'biz'],
+    core: 'en',
     req: { adm: 7, econ: 5, dip: 3, cri: 6 },
     prefs: { tf: { val: 'logic', w: 0.8 }, ns: { val: 'sensing', w: 0.6 } },
     ideal: ['ЛСЭ', 'СЛИ'],
@@ -144,6 +158,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'health', icon: '🏥', title: 'Министр здравоохранения', weight: 0.6,
     allow: ['med'],
+    core: 'med',
     req: { adm: 6, econ: 3, dip: 3, cri: 5 },
     prefs: { tf: { val: 'ethics', w: 0.7 }, rat: { val: 'rational', w: 0.5 } },
     ideal: ['ЭСЭ', 'ЭИЭ'],
@@ -152,6 +167,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'education', icon: '🎓', title: 'Министр образования', weight: 0.6,
     allow: ['edu', 'soc'],
+    core: 'edu',
     req: { adm: 6, econ: 2, dip: 4, cri: 3 },
     prefs: { ns: { val: 'intuition', w: 1 }, rat: { val: 'rational', w: 0.4 } },
     ideal: ['ИЛЭ', 'ЛИИ', 'ИЭЭ'],
@@ -160,6 +176,7 @@ export const POSITIONS: Position[] = [
   {
     id: 'digital', icon: '💻', title: 'Министр цифровой трансформации', weight: 0.7,
     allow: ['it', 'biz', 'fin'],
+    core: 'it',
     req: { adm: 7, econ: 3, dip: 4, cri: 3 },
     prefs: { ns: { val: 'intuition', w: 1 }, ei: { val: 'extravert', w: 0.5 }, tf: { val: 'logic', w: 0.4 } },
     ideal: ['ИЛЭ', 'ЛИЭ'],
