@@ -1,0 +1,58 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ---- Виртуальное министерство: тёмная политическая тема ---- */
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, "Courier New", monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: #e8edf7;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, #16224a66 0%, transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, #1a2b1e55 0%, transparent 55%),
+    #0a1022;
+  min-height: 100vh;
+}
+
+/* чип-статистика в шапке */
+.stat-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid #223050;
+  background: #111a33;
+  border-radius: 12px;
+  padding: 8px 14px;
+  min-width: 84px;
+}
+.stat-chip b {
+  color: #f5b942;
+  font-size: 20px;
+  line-height: 1.1;
+}
+.stat-chip span {
+  color: #8fa0c2;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* нативные селекты под тёмную тему */
+select option {
+  background: #0d1730;
+  color: #e8edf7;
+}
+
+/* тонкий скроллбар */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #223050 transparent;
+}
