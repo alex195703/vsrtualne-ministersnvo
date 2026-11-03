@@ -2,18 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import {
-  POSITIONS, POLITICIANS, CABINETS, EARLIER_GOVTS, CONTEXT_INFO, COMP_INFO,
-  type ContextKind, type Cabinet, type CompKey,
+  POSITIONS, POLITICIANS, CABINETS, EARLIER_GOVTS, CONTEXT_INFO, COMP_INFO, FIELD_INFO,
+  isEligible, surnameFirst,
+  type ContextKind, type Cabinet, type CompKey, type FieldId, type Politician, type Position,
 } from '@/lib/ministry-data'
 import {
   evaluateCabinet, rankAll, topForPosition, socioFit, compFit, quadraOf,
   typeByRu, CONTEXT_WEIGHT, type CabinetEval, type RankedCabinet, type PairNote,
 } from '@/lib/ministry-engine'
 import { QUADRA_COLORS } from '@/lib/relations'
-import { QUADRAS, type QuadraId } from '@/lib/socionics-data'
+import { QUADRAS, TYPES, type QuadraId } from '@/lib/socionics-data'
 
 const COMP_KEYS: CompKey[] = ['adm', 'econ', 'dip', 'cri']
 const STORAGE_KEY = 'vm-builder-v1'
+const CUSTOM_KEY = 'vm-custom-v1'
 type Tab = 'history' | 'builder' | 'compare'
 type Builder = Record<string, string | null>
 
@@ -264,32 +266,154 @@ function HistoryTab() {
   )
 }
 
+// ---------- группы кандидатов и свои кандидатуры ----------
+
+const GROUPS_META: { key: 'classic' | 'manager' | 'rising' | 'custom'; label: string }[] = [
+  { key: 'classic', label: 'Политики и госслужащие' },
+  { key: 'manager', label: 'Менеджеры и эксперты' },
+  { key: 'rising', label: 'Новые лица' },
+  { key: 'custom', label: 'Ваши кандидаты' },
+]
+
+/** Допустимые кандидаты должности, сгруппированные по происхождению,
+ *  внутри группы — по фамилии */
+function candidateGroups(pool: Politician[], custom: Politician[], pos: Position) {
+  const eligible = pool.filter(p => isEligible(p, pos))
+  const customIds = new Set(custom.map(c => c.id))
+  return GROUPS_META.map(g => ({
+    ...g,
+    items: eligible
+      .filter(p => g.key === 'custom'
+        ? customIds.has(p.id)
+        : !customIds.has(p.id) && (p.group ?? 'classic') === g.key)
+      .sort((a, b) => surnameFirst(a.name).localeCompare(surnameFirst(b.name), 'ru')),
+  }))
+}
+
+/** Личные кандидаты из localStorage — с проверкой полей */
+function sanitizeCustom(raw: unknown): Politician[] {
+  if (!Array.isArray(raw)) return []
+  const ruTypes = new Set(TYPES.map(t => t.ru))
+  const cl = (v: unknown) => Math.max(0, Math.min(10, Math.round(Number(v)) || 0))
+  const out: Politician[] = []
+  for (const c of raw) {
+    if (!c || typeof c.id !== 'string' || typeof c.name !== 'string' || !ruTypes.has(c.type)) continue
+    const comp = (c.comp ?? {}) as Record<string, unknown>
+    out.push({
+      id: c.id, name: String(c.name).slice(0, 60), type: c.type,
+      comp: { adm: cl(comp.adm), econ: cl(comp.econ), dip: cl(comp.dip), cri: cl(comp.cri) },
+      fields: Array.isArray(c.fields) ? c.fields.filter((f: unknown) => FIELD_INFO[f as FieldId]) : ['gov'],
+      bio: 'Личная кандидатура игрока.',
+    })
+  }
+  return out
+}
+
+const TYPE_OPTIONS = TYPES.map(t => t.ru)
+
+function CustomPolForm({ custom, setCustom }: { custom: Politician[]; setCustom: (c: Politician[]) => void }) {
+  const [name, setName] = useState('')
+  const [type, setType] = useState('ЛСЭ')
+  const [f1, setF1] = useState<FieldId>('gov')
+  const [f2, setF2] = useState<FieldId | ''>('')
+  const [comp, setComp] = useState<Record<CompKey, number>>({ adm: 6, econ: 5, dip: 5, cri: 5 })
+  const [err, setErr] = useState('')
+
+  const inp = 'rounded-lg border border-[#223050] bg-[#0d1730] px-2 py-1.5 text-[12px] text-[#e8edf7]'
+
+  const add = () => {
+    const nm = name.trim().replace(/\s+/g, ' ')
+    if (nm.split(' ').length < 2) { setErr('Нужны фамилия и имя'); return }
+    if (custom.some(c => c.name.toLowerCase() === nm.toLowerCase())) { setErr('Такой кандидат уже есть'); return }
+    const cl = (v: number) => Math.max(0, Math.min(10, Math.round(v) || 0))
+    setCustom([...custom, {
+      id: 'c' + Date.now().toString(36), name: nm, type,
+      comp: { adm: cl(comp.adm), econ: cl(comp.econ), dip: cl(comp.dip), cri: cl(comp.cri) },
+      fields: f2 ? [f1, f2 as FieldId] : [f1],
+      bio: 'Личная кандидатура игрока.',
+    }])
+    setName(''); setErr('')
+  }
+
+  return (
+    <div className="rounded-xl border border-[#223050] bg-[#111a33] p-4">
+      <div className="text-[11px] uppercase tracking-wide text-[#8fa0c2] mb-2">➕ Свой кандидат</div>
+      <div className="flex flex-col gap-1.5">
+        <input className={inp} placeholder="Фамилия Имя" value={name} maxLength={60}
+          onChange={e => { setName(e.target.value); setErr('') }} />
+        <div className="grid grid-cols-2 gap-1.5">
+          <select className={inp} style={{ colorScheme: 'dark' }} value={type} onChange={e => setType(e.target.value)} title="соционический тип">
+            {TYPE_OPTIONS.map(ru => <option key={ru} value={ru}>{ru}</option>)}
+          </select>
+          <select className={inp} style={{ colorScheme: 'dark' }} value={f1} onChange={e => setF1(e.target.value as FieldId)} title="сфера">
+            {(Object.keys(FIELD_INFO) as FieldId[]).map(f => <option key={f} value={f}>{FIELD_INFO[f].name}</option>)}
+          </select>
+        </div>
+        <select className={inp} style={{ colorScheme: 'dark' }} value={f2} onChange={e => setF2(e.target.value as FieldId | '')} title="вторая сфера">
+          <option value="">— вторая сфера не нужна —</option>
+          {(Object.keys(FIELD_INFO) as FieldId[]).map(f => <option key={f} value={f}>{FIELD_INFO[f].name}</option>)}
+        </select>
+        <div className="grid grid-cols-4 gap-1.5">
+          {COMP_KEYS.map(k => (
+            <label key={k} className="text-[9px] text-[#8fa0c2]">
+              {COMP_INFO[k].name.slice(0, 4)}.
+              <input type="number" min={0} max={10} value={comp[k]}
+                onChange={e => setComp({ ...comp, [k]: Number(e.target.value) })}
+                className={`${inp} w-full mt-0.5`} />
+            </label>
+          ))}
+        </div>
+        {err && <div className="text-[11px] text-[#f87171]">{err}</div>}
+        <button onClick={add}
+          className="rounded-lg border border-[#f5b942]55 px-3 py-1.5 text-[12px] text-[#f5b942] hover:bg-[#f5b94218]">
+          Добавить в список
+        </button>
+        {custom.length > 0 && (
+          <div className="mt-1 flex flex-col gap-1 border-t border-[#1c2947] pt-2">
+            {custom.map(c => (
+              <div key={c.id} className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="text-[#c7d2e8] truncate">{surnameFirst(c.name)} · {c.type}</span>
+                <button onClick={() => setCustom(custom.filter(x => x.id !== c.id))}
+                  className="shrink-0 text-[#67789c] hover:text-[#f87171]" title="удалить">✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ---------- вкладка «Конструктор» ----------
 
-function BuilderTab({ builder, setBuilder, context, setContext }: {
+function BuilderTab({ builder, setBuilder, context, setContext, custom, setCustom }: {
   builder: Builder
   setBuilder: (b: Builder) => void
   context: ContextKind
   setContext: (c: ContextKind) => void
+  custom: Politician[]
+  setCustom: (c: Politician[]) => void
 }) {
   const setPos = (posId: string, polId: string | null) => {
     const nb = { ...builder, [posId]: polId || null }
     setBuilder(nb)
   }
 
+  const pool = useMemo(() => [...Object.values(POLITICIANS), ...custom], [custom])
+
   const autoFill = () => {
     const nb: Builder = {}
     const used = new Set<string>()
     const order = [...POSITIONS].sort((a, b) => b.weight - a.weight)
     for (const pos of order) {
-      const best = topForPosition(pos.id, 103)
+      const best = topForPosition(pos.id, 103, pool)
         .find(c => !used.has(c.pol.id))
       if (best) { nb[pos.id] = best.pol.id; used.add(best.pol.id) }
     }
     setBuilder(nb)
   }
 
-  const ev = useMemo(() => evaluateCabinet(builder, context), [builder, context])
+  const ev = useMemo(() => evaluateCabinet(builder, context, [], custom), [builder, context, custom])
   const chosenIds = Object.values(builder).filter(Boolean) as string[]
 
   return (
@@ -311,11 +435,17 @@ function BuilderTab({ builder, setBuilder, context, setContext }: {
           <button onClick={() => setBuilder({})} className="rounded-lg border border-[#223050] px-3 py-1.5 text-[12px] text-[#8fa0c2] hover:bg-[#141e3d]">Очистить</button>
         </div>
 
+        <p className="text-[11.5px] text-[#67789c] mb-3 leading-relaxed">
+          В списках — только профильные кандидаты: силовики на оборону и МВД, юристы на юстицию,
+          медики на здравоохранение. Менеджеры допущены на министерства — как Резников и Умёров в жизни.
+          Растущие политики — в группе «Новые лица», своих кандидатов добавляйте в панели справа.
+        </p>
         <div className="grid gap-2.5 md:grid-cols-2">
           {POSITIONS.map(pos => {
             const polId = builder[pos.id] ?? null
-            const pol = polId ? POLITICIANS[polId] : null
-            const picks = topForPosition(pos.id, 4)
+            const pol = polId ? (pool.find(p => p.id === polId) ?? null) : null
+            const picks = topForPosition(pos.id, 4, pool)
+            const groups = candidateGroups(pool, custom, pos)
             const cFit = pol ? Math.round(compFit(pol, pos) * 100) : null
             const sFit = pol ? socioFit(pol.type, pos) : null
             const effW = pos.weight * (CONTEXT_WEIGHT[context][pos.id] ?? 1)
@@ -336,8 +466,15 @@ function BuilderTab({ builder, setBuilder, context, setContext }: {
                   onChange={e => setPos(pos.id, e.target.value || null)}
                 >
                   <option value="">— вакансия —</option>
-                  {Object.values(POLITICIANS).sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(p => (
-                    <option key={p.id} value={p.id}>{p.name} · {p.type}</option>
+                  {pol && !isEligible(pol, pos) && (
+                    <option value={pol.id}>{surnameFirst(pol.name)} · {pol.type} · вне профиля</option>
+                  )}
+                  {groups.filter(g => g.items.length > 0).map(g => (
+                    <optgroup key={g.key} label={g.label}>
+                      {g.items.map(p => (
+                        <option key={p.id} value={p.id}>{surnameFirst(p.name)} · {p.type}</option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
                 {pol && (
@@ -393,6 +530,8 @@ function BuilderTab({ builder, setBuilder, context, setContext }: {
           <QuadraChips quadras={ev.quadras} />
         </div>
 
+        <CustomPolForm custom={custom} setCustom={setCustom} />
+
         <div className="rounded-xl border border-[#223050] bg-[#111a33] p-4 flex flex-col gap-3">
           <PairList title="Дуальные пары" pairs={ev.dyads} color="#34d399" empty="дуальных пар нет" />
           <PairList title="Конфликты" pairs={ev.conflicts} color="#f87171" empty="конфликтных пар нет" />
@@ -413,8 +552,8 @@ function BuilderTab({ builder, setBuilder, context, setContext }: {
 
 // ---------- вкладка «Сравнение» ----------
 
-function CompareTab({ builder, context }: { builder: Builder; context: ContextKind }) {
-  const ranked = useMemo(() => rankAll(builder, context), [builder, context])
+function CompareTab({ builder, context, custom }: { builder: Builder; context: ContextKind; custom: Politician[] }) {
+  const ranked = useMemo(() => rankAll(builder, context, custom), [builder, context, custom])
   const player = ranked.find(r => r.isPlayer)
   const hist = ranked.filter(r => !r.isPlayer)
   const best = hist[0]
@@ -519,6 +658,7 @@ export default function Page() {
   const [tab, setTab] = useState<Tab>('history')
   const [builder, setBuilder] = useState<Builder>({})
   const [context, setContext] = useState<ContextKind>('war')
+  const [custom, setCustom] = useState<Politician[]>([])
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
@@ -529,6 +669,7 @@ export default function Page() {
         if (data.builder && typeof data.builder === 'object') setBuilder(data.builder)
         if (data.context && CONTEXT_INFO[data.context]) setContext(data.context)
       }
+      setCustom(sanitizeCustom(JSON.parse(localStorage.getItem(CUSTOM_KEY) ?? '[]')))
     } catch { /* первый визит */ }
     setHydrated(true)
   }, [])
@@ -537,6 +678,11 @@ export default function Page() {
     if (!hydrated) return
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ builder, context })) } catch { /* приватный режим */ }
   }, [builder, context, hydrated])
+
+  useEffect(() => {
+    if (!hydrated) return
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(custom)) } catch { /* приватный режим */ }
+  }, [custom, hydrated])
 
   return (
     <main className="min-h-screen">
@@ -556,7 +702,7 @@ export default function Page() {
             </div>
             <div className="flex gap-2">
               <div className="stat-chip"><b>13</b><span>кабинетов</span></div>
-              <div className="stat-chip"><b>{Object.keys(POLITICIANS).length}</b><span>политиков</span></div>
+              <div className="stat-chip"><b>{Object.keys(POLITICIANS).length + custom.length}</b><span>кандидатов</span></div>
               <div className="stat-chip"><b>12</b><span>должностей</span></div>
             </div>
           </div>
@@ -582,9 +728,10 @@ export default function Page() {
 
         {tab === 'history' && <HistoryTab />}
         {tab === 'builder' && (
-          <BuilderTab builder={builder} setBuilder={setBuilder} context={context} setContext={setContext} />
+          <BuilderTab builder={builder} setBuilder={setBuilder} context={context} setContext={setContext}
+            custom={custom} setCustom={setCustom} />
         )}
-        {tab === 'compare' && <CompareTab builder={builder} context={context} />}
+        {tab === 'compare' && <CompareTab builder={builder} context={context} custom={custom} />}
 
         {/* методология */}
         <footer className="mt-10 rounded-xl border border-[#1c2947] bg-[#0d1730] p-4 text-[12px] text-[#8fa0c2] leading-relaxed">
@@ -604,6 +751,14 @@ export default function Page() {
                 первый вице-премьер 1.1, экономика/МИД/МВД 1.1, энергетика 1.0, юстиция и цифра 0.7,
                 здравоохранение и образование 0.6. В контексте «война» оборона ×1.6, МВД ×1.5, энергетика ×1.4;
                 в «кризис» финансы ×1.5, экономика ×1.4; в «реформы» юстиция и экономика ×1.3.
+              </div>
+              <div>
+                <b className="text-[#c7d2e8]">Кто допустим на должность.</b> У каждой должности — список
+                сфер: армия и силовой блок — на оборону и МВД, юристы — на юстицию, медики — на
+                здравоохранение, энергетики — на ТЭК. Министр — политическая должность, поэтому
+                выдающиеся менеджеры из бизнеса допущены почти везде — как Резников и Умёров в жизни.
+                Группа «Новые лица» — растущие политики, а своих кандидатов игрок добавляет в конструкторе
+                (сохраняются в браузере).
               </div>
               <div>
                 <b className="text-[#c7d2e8]">Историческая проверка.</b> Каждый кабинет оценивается в контексте
