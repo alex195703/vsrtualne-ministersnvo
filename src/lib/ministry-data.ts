@@ -28,6 +28,25 @@ export const COMP_INFO: Record<CompKey, { name: string; hint: string }> = {
 export type DichoKey = 'ei' | 'ns' | 'tf' | 'rat'
 export type DichoVal = 'extravert' | 'introvert' | 'intuition' | 'sensing' | 'logic' | 'ethics' | 'rational' | 'irrational'
 
+// ---------- Сферы деятельности (допустимость на должности) ----------
+
+export type FieldId = 'gov' | 'mil' | 'fin' | 'biz' | 'law' | 'en' | 'it' | 'med' | 'edu' | 'soc'
+
+export const FIELD_INFO: Record<FieldId, { name: string; icon: string }> = {
+  gov: { name: 'Госуправление и политика', icon: '🏛' },
+  mil: { name: 'Армия и силовой блок', icon: '🎖' },
+  fin: { name: 'Финансы и экономика', icon: '🏦' },
+  biz: { name: 'Бизнес и менеджмент', icon: '💼' },
+  law: { name: 'Право', icon: '⚖️' },
+  en: { name: 'Энергетика и ТЭК', icon: '⚡' },
+  it: { name: 'IT и цифровизация', icon: '💻' },
+  med: { name: 'Медицина', icon: '🏥' },
+  edu: { name: 'Образование и наука', icon: '🎓' },
+  soc: { name: 'СМИ, культура, социум', icon: '📣' },
+}
+
+const ALL_FIELDS: FieldId[] = ['gov', 'mil', 'fin', 'biz', 'law', 'en', 'it', 'med', 'edu', 'soc']
+
 export interface Position {
   id: string
   icon: string
@@ -42,11 +61,17 @@ export interface Position {
   ideal: string[]
   /** требования к должности — человеческим языком */
   demand: string
+  /** сферы, специалисты которых допустимы на должность;
+   *  министр — политическая должность, поэтому бизнес-управленцы
+   *  допущены почти везде (как Резников и Умёров в жизни),
+   *  а вот врач не назначается обороной, и наоборот */
+  allow: FieldId[]
 }
 
 export const POSITIONS: Position[] = [
   {
     id: 'pm', icon: '🏛', title: 'Премьер-министр', weight: 2.0,
+    allow: ALL_FIELDS,
     req: { adm: 9, econ: 7, dip: 7, cri: 8 },
     prefs: { tf: { val: 'logic', w: 1 }, rat: { val: 'rational', w: 0.6 }, ei: { val: 'extravert', w: 0.3 } },
     ideal: ['ЛСЭ', 'СЛЭ', 'ЛИЭ'],
@@ -54,6 +79,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'vicepm', icon: '🗂', title: 'Первый вице-премьер', weight: 1.1,
+    allow: ALL_FIELDS,
     req: { adm: 8, econ: 6, dip: 5, cri: 6 },
     prefs: { ei: { val: 'extravert', w: 0.4 }, tf: { val: 'logic', w: 0.5 } },
     ideal: ['ЛСЭ', 'СЭЭ'],
@@ -61,6 +87,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'finance', icon: '💰', title: 'Министр финансов', weight: 1.4,
+    allow: ['fin', 'biz', 'law'],
     req: { adm: 7, econ: 9, dip: 3, cri: 5 },
     prefs: { tf: { val: 'logic', w: 1 }, rat: { val: 'rational', w: 0.7 } },
     ideal: ['ЛСИ', 'ЛИЭ'],
@@ -68,6 +95,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'economy', icon: '📈', title: 'Министр экономики', weight: 1.1,
+    allow: ['fin', 'biz'],
     req: { adm: 6, econ: 8, dip: 5, cri: 4 },
     prefs: { tf: { val: 'logic', w: 1 }, ns: { val: 'intuition', w: 0.6 } },
     ideal: ['ЛИЭ', 'ЛИИ'],
@@ -75,6 +103,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'defense', icon: '🛡', title: 'Министр обороны', weight: 1.4,
+    allow: ['mil', 'law', 'biz'],
     req: { adm: 7, econ: 2, dip: 4, cri: 9 },
     prefs: { ns: { val: 'sensing', w: 1 }, tf: { val: 'logic', w: 0.8 }, rat: { val: 'rational', w: 0.3 } },
     ideal: ['СЛЭ', 'ЛСЭ'],
@@ -82,6 +111,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'mfa', icon: '🌐', title: 'Министр иностранных дел', weight: 1.1,
+    allow: ['gov', 'law', 'soc', 'biz'],
     req: { adm: 5, econ: 4, dip: 9, cri: 4 },
     prefs: { tf: { val: 'ethics', w: 1 }, ns: { val: 'intuition', w: 0.7 }, ei: { val: 'extravert', w: 0.4 } },
     ideal: ['ЭИЭ', 'ИЭЭ', 'ЭИИ'],
@@ -89,6 +119,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'mvd', icon: '👮', title: 'Министр внутренних дел', weight: 1.1,
+    allow: ['mil', 'law', 'biz'],
     req: { adm: 6, econ: 1, dip: 3, cri: 8 },
     prefs: { ns: { val: 'sensing', w: 1 }, tf: { val: 'logic', w: 0.6 }, ei: { val: 'extravert', w: 0.3 } },
     ideal: ['СЛЭ', 'ЛСЭ'],
@@ -96,6 +127,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'justice', icon: '⚖️', title: 'Министр юстиции', weight: 0.7,
+    allow: ['law'],
     req: { adm: 7, econ: 3, dip: 3, cri: 3 },
     prefs: { tf: { val: 'logic', w: 0.8 }, rat: { val: 'rational', w: 0.8 } },
     ideal: ['ЛСИ', 'ЭСИ'],
@@ -103,6 +135,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'energy', icon: '⚡', title: 'Министр энергетики', weight: 1.0,
+    allow: ['en', 'fin', 'biz'],
     req: { adm: 7, econ: 5, dip: 3, cri: 6 },
     prefs: { tf: { val: 'logic', w: 0.8 }, ns: { val: 'sensing', w: 0.6 } },
     ideal: ['ЛСЭ', 'СЛИ'],
@@ -110,6 +143,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'health', icon: '🏥', title: 'Министр здравоохранения', weight: 0.6,
+    allow: ['med'],
     req: { adm: 6, econ: 3, dip: 3, cri: 5 },
     prefs: { tf: { val: 'ethics', w: 0.7 }, rat: { val: 'rational', w: 0.5 } },
     ideal: ['ЭСЭ', 'ЭИЭ'],
@@ -117,6 +151,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'education', icon: '🎓', title: 'Министр образования', weight: 0.6,
+    allow: ['edu', 'soc'],
     req: { adm: 6, econ: 2, dip: 4, cri: 3 },
     prefs: { ns: { val: 'intuition', w: 1 }, rat: { val: 'rational', w: 0.4 } },
     ideal: ['ИЛЭ', 'ЛИИ', 'ИЭЭ'],
@@ -124,6 +159,7 @@ export const POSITIONS: Position[] = [
   },
   {
     id: 'digital', icon: '💻', title: 'Министр цифровой трансформации', weight: 0.7,
+    allow: ['it', 'biz', 'fin'],
     req: { adm: 7, econ: 3, dip: 4, cri: 3 },
     prefs: { ns: { val: 'intuition', w: 1 }, ei: { val: 'extravert', w: 0.5 }, tf: { val: 'logic', w: 0.4 } },
     ideal: ['ИЛЭ', 'ЛИЭ'],
@@ -143,6 +179,10 @@ export interface Politician {
   comp: Record<CompKey, number>
   /** одна строка-досье */
   bio: string
+  /** сферы компетентности; не указано — «gov» (политик/госслужащий) */
+  fields?: FieldId[]
+  /** группа в списках конструктора: менеджеры/эксперты или новые лица */
+  group?: 'manager' | 'rising'
 }
 
 export const POLITICIANS: Record<string, Politician> = {
@@ -493,6 +533,110 @@ export const POLITICIANS: Record<string, Politician> = {
   tyhypko: { id: 'tyhypko', name: 'Сергей Тигипко', type: 'СЭЭ',
     comp: { adm: 7, econ: 7, dip: 5, cri: 5 },
     bio: 'Банкир; вице-премьер 2010–2012, экономблок 2020–21.' },
+
+  // --- Менеджеры и эксперты из других областей ---
+  kosyuk: { id: 'kosyuk', name: 'Юрий Косюк', type: 'ЛСЭ',
+    comp: { adm: 9, econ: 7, dip: 5, cri: 7 },
+    fields: ['biz'], group: 'manager',
+    bio: 'Совладелец и многолетний операционный директор сети «АТБ», глава Черкасской ОВА 2020–2022; эталон операционного менеджмента.' },
+  pyshnyy: { id: 'pyshnyy', name: 'Андрей Пышный', type: 'ЛСИ',
+    comp: { adm: 8, econ: 9, dip: 5, cri: 7 },
+    fields: ['fin', 'biz'], group: 'manager',
+    bio: 'Банкир: «Укргазбанк», глава НБУ с 07.2022; банковская система под войной и санкциями.' },
+  gontareva: { id: 'gontareva', name: 'Валерия Гонтарева', type: 'ЛИЭ',
+    comp: { adm: 7, econ: 9, dip: 4, cri: 6 },
+    fields: ['fin', 'biz'], group: 'manager',
+    bio: 'Инвестбанкир, глава НБУ 2014–2017; плавающий курс и чистка банков — самая спорная реформа эпохи.' },
+  stavnitser: { id: 'stavnitser', name: 'Андрей Ставницер', type: 'СЛЭ',
+    comp: { adm: 8, econ: 8, dip: 6, cri: 7 },
+    fields: ['biz'], group: 'manager',
+    bio: 'Совладелец сети WOG, глава «Лиги победы»; логистика топлива в войне, волонтёрская координация.' },
+
+  // --- Новые лица: растущие политики ---
+  brovdi: { id: 'brovdi', name: 'Роберт Бровди «Мадяр»', type: 'ЛСЭ',
+    comp: { adm: 8, econ: 4, dip: 4, cri: 10 },
+    fields: ['mil', 'it'], group: 'rising',
+    bio: 'Командующий Силами беспилотных систем (с 2025), создатель батальона «Мадярские птицы»; лицо дроновой армии.' },
+  kim: { id: 'kim', name: 'Виталий Ким', type: 'ЭСЭ',
+    comp: { adm: 8, econ: 5, dip: 8, cri: 7 },
+    fields: ['gov', 'mil'], group: 'rising',
+    bio: 'Глава Николаевской ОВА с 2020; прифронтовой администратор нового поколения, острый на язык и хладнокровный в ударах.' },
+  fedorov_ivan: { id: 'fedorov_ivan', name: 'Иван Фёдоров', type: 'СЭЭ',
+    comp: { adm: 8, econ: 5, dip: 7, cri: 8 },
+    fields: ['gov'], group: 'rising',
+    bio: 'Мэр Мелитополя, отказавшийся оккупантам (2022) и выменянный из плена; глава Запорожской ОВА.' },
+  arakhamia: { id: 'arakhamia', name: 'Давид Арахамия', type: 'СЭЭ',
+    comp: { adm: 8, econ: 6, dip: 6, cri: 8 },
+    fields: ['gov', 'it', 'mil'], group: 'rising',
+    bio: 'Глава фракции «Слуга народа», экс-секретарь СНБО; цифра, оборонные закупки, переговорная платформа.' },
+}
+
+/** Сферы для тех, у кого не заданы явно: почти все — политики и госслужащие.
+ *  Разметка — та же экспертная игровая модель, что и компетенции. */
+const FIELD_OVERRIDES: Record<string, FieldId[]> = {
+  // финансы и экономика
+  tymoshenko: ['gov', 'fin'], pynzenyk: ['gov', 'fin'], teryokhin: ['gov', 'fin'],
+  stashevsky: ['gov', 'fin'], shlapak: ['gov', 'fin'], yatsenyuk: ['gov', 'law', 'fin'],
+  makukha: ['gov', 'fin'], azarov: ['gov', 'fin'], klyuev: ['gov', 'fin', 'biz'],
+  yaroshenko: ['gov', 'fin'], kolobov: ['gov', 'fin'], lebedev: ['fin', 'mil'],
+  arbuzov: ['gov', 'fin'], prasolov: ['gov', 'fin'], danylyshyn: ['gov', 'fin'],
+  yaresko: ['fin', 'biz'], abromavicius: ['biz', 'fin'], danylyuk: ['gov', 'fin'],
+  stepaniv: ['gov', 'fin'], markarova: ['fin', 'law'], marchenko: ['gov', 'fin'],
+  kachka: ['gov', 'fin'], svirydenko: ['gov', 'fin'], sobolev: ['gov', 'fin'],
+  kravchenko: ['gov', 'fin'], tyhypko: ['biz', 'fin'], skaletska: ['fin', 'med'],
+  shmyhal: ['gov', 'en', 'fin'], zahorodniuk: ['biz', 'fin'],
+  // силовой блок
+  grytsenko: ['gov', 'mil'], lutsenko: ['gov', 'mil', 'law'], tsushko: ['gov', 'mil'],
+  polyachenko: ['gov', 'mil'], yezhel: ['mil'], salamatin: ['mil'], mohylyov: ['mil'],
+  zakharchenko: ['mil', 'law'], yarema: ['law', 'mil'], poltorak: ['mil'],
+  monastyrsky: ['law'], klymenko: ['mil', 'law'], koretsky: ['gov', 'mil'],
+  hmara: ['mil', 'law'], vyhivsky: ['mil', 'law'], prystaiko: ['gov', 'mil'],
+  zaluzhny: ['mil'],
+  // юристы
+  zvarych: ['law'], lavrinovich: ['law'], onishchuk: ['law'], lukash: ['law'],
+  petrenko: ['law'], maliuska: ['law'], golovatiy: ['law'], stefanyshina: ['law', 'gov'],
+  reznikov: ['law', 'biz'], sybiga: ['gov', 'law'], halushchenko: ['law', 'en'],
+  maslov: ['law'], tarasyuk: ['gov', 'law'],
+  // энергетика
+  plachkov: ['gov', 'en'], prodan: ['gov', 'en'], boyko: ['gov', 'en'],
+  stavitsky: ['gov', 'en'], demchyshyn: ['gov', 'en'], nasalyk: ['gov', 'en'],
+  orzhel: ['gov', 'en'], hrynchuk: ['gov', 'en'],
+  // медицина
+  polishchuk: ['med'], musiy: ['med'], bogatyryova: ['gov', 'med'], kvitashvili: ['med'],
+  suprun: ['med', 'biz'], liashko: ['med', 'gov'],
+  // образование, наука, социум
+  nikolaenko: ['gov', 'edu'], vakarchuk: ['edu'], kvit: ['edu', 'law'],
+  grynevych: ['edu'], shkarlet: ['edu', 'fin'], lisovyi: ['edu'], butenko: ['gov', 'edu'],
+  tabachnyk: ['gov', 'edu'], sheremeta: ['edu', 'biz'], mylovanov: ['fin', 'edu'],
+  novosad: ['edu', 'soc'], korolevska: ['gov', 'soc'], denisova: ['gov', 'soc'],
+  berezhna: ['gov', 'soc'], kuleba_d: ['gov', 'soc'],
+  // IT и бизнес
+  fedorov: ['it', 'biz'], umerov: ['biz', 'it'], klympush: ['gov', 'biz', 'it'],
+  ferchuk: ['gov', 'it'], poroshenko: ['gov', 'biz'], groysman: ['gov', 'biz'],
+  kinakh: ['gov', 'biz'], yekhanurov: ['gov', 'fin', 'biz'], avakov: ['biz', 'gov'],
+  yanukovich: ['gov', 'biz'],
+}
+
+/** Сферы кандидата: явные или «gov» по умолчанию */
+export function fieldsOf(p: Politician): FieldId[] {
+  if (p.fields && p.fields.length) return p.fields
+  return FIELD_OVERRIDES[p.id] ?? ['gov']
+}
+
+/** Допущен ли кандидат к должности (пересечение сфер) */
+export function isEligible(p: Politician, pos: Position): boolean {
+  return fieldsOf(p).some(f => pos.allow.includes(f))
+}
+
+/** «Арсений Яценюк» → «Яценюк Арсений» — фамилия первой для поиска в списках */
+export function surnameFirst(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length < 2) return name
+  let si = parts.length - 1
+  while (si > 0 && /^[«(]/.test(parts[si])) si-- // прозвища в кавычках — не фамилия
+  if (si === 0) return name
+  const rest = [...parts.slice(0, si), ...parts.slice(si + 1)]
+  return `${parts[si]} ${rest.join(' ')}`
 }
 
 // ---------- Кабинеты ----------
