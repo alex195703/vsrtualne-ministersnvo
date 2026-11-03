@@ -12,7 +12,7 @@ import {
   typeByRu, CONTEXT_WEIGHT, type CabinetEval, type RankedCabinet, type PairNote,
 } from '@/lib/ministry-engine'
 import { QUADRA_COLORS, RELATION_NAME, type RelationKind } from '@/lib/relations'
-import { QUADRAS, TYPES, type QuadraId } from '@/lib/socionics-data'
+import { QUADRAS, TYPES, ukAbbr, type QuadraId } from '@/lib/socionics-data'
 import { useL, useBi, useLang, setLang, type Lang, type Bi, useTitle } from '@/lib/i18n'
 
 const COMP_KEYS: CompKey[] = ['adm', 'econ', 'dip', 'cri']
@@ -104,6 +104,7 @@ function CompBars({ comp, req, compact }: { comp: Record<CompKey, number>; req?:
 
 function TypeChip({ ru, small }: { ru: string; small?: boolean }) {
   const L = useL()
+  const lang = useLang()
   const t = typeByRu(ru)
   const c = QUADRA_COLORS[t.quadra]
   return (
@@ -112,7 +113,7 @@ function TypeChip({ ru, small }: { ru: string; small?: boolean }) {
       style={{ background: c.fill + '14', color: c.stroke, borderColor: c.stroke + '44', fontSize: small ? 10 : 11 }}
       title={`${L('Квадра', 'Квадра')} ${QUADRAS[t.quadra].name}: ${QUADRAS[t.quadra].motto}`}
     >
-      <b>{ru}</b> {t.name}
+      <b>{lang === 'uk' ? ukAbbr(ru) : ru}</b> {t.name}
     </span>
   )
 }
@@ -370,6 +371,8 @@ function CustomPolForm({ custom, setCustom }: { custom: Politician[]; setCustom:
   const [err, setErr] = useState('')
   const B = useBi()
   const L = useL()
+  const lang = useLang()
+  const K = (s: string) => (lang === 'uk' ? ukAbbr(s) : s)
 
   const inp = 'rounded-lg border border-[#223050] bg-[#0d1730] px-2 py-1.5 text-[12px] text-[#e8edf7]'
 
@@ -424,7 +427,7 @@ function CustomPolForm({ custom, setCustom }: { custom: Politician[]; setCustom:
           <div className="mt-1 flex flex-col gap-1 border-t border-[#1c2947] pt-2">
             {custom.map(c => (
               <div key={c.id} className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="text-[#c7d2e8] truncate">{surnameFirst(B(c.name))} · {c.type}</span>
+                <span className="text-[#c7d2e8] truncate">{surnameFirst(B(c.name))} · {K(c.type)}</span>
                 <button onClick={() => setCustom(custom.filter(x => x.id !== c.id))}
                   className="shrink-0 text-[#67789c] hover:text-[#f87171]" title={L('видалити', 'удалить')}>✕</button>
               </div>
@@ -449,6 +452,7 @@ function BuilderTab({ builder, setBuilder, context, setContext, custom, setCusto
   const B = useBi()
   const L = useL()
   const lang = useLang()
+  const K = (s: string) => (lang === 'uk' ? ukAbbr(s) : s)
 
   const setPos = (posId: string, polId: string | null) => {
     const nb = { ...builder, [posId]: polId || null }
@@ -520,12 +524,12 @@ function BuilderTab({ builder, setBuilder, context, setContext, custom, setCusto
                 >
                   <option value="">{L('— вакансія —', '— вакансия —')}</option>
                   {pol && !isEligible(pol, pos) && (
-                    <option value={pol.id}>{surnameFirst(B(pol.name))} · {pol.type} · {L('поза профілем', 'вне профиля')}</option>
+                    <option value={pol.id}>{surnameFirst(B(pol.name))} · {K(pol.type)} · {L('поза профілем', 'вне профиля')}</option>
                   )}
                   {groups.filter(g => g.items.length > 0).map(g => (
                     <optgroup key={g.key} label={B(g.label)}>
                       {g.items.map(p => (
-                        <option key={p.id} value={p.id}>{surnameFirst(B(p.name))} · {p.type}</option>
+                        <option key={p.id} value={p.id}>{surnameFirst(B(p.name))} · {K(p.type)}</option>
                       ))}
                     </optgroup>
                   ))}
