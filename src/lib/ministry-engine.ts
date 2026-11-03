@@ -10,6 +10,7 @@
 // меняет ВЕС позиций, а не самих людей.
 // ============================================================
 
+import type { Bi } from './i18n'
 import { TYPES, type SocioType, type QuadraId } from './socionics-data'
 import { relationBetween, PAIR_SCORE } from './relations'
 import {
@@ -78,8 +79,8 @@ export interface PositionEval {
 }
 
 export interface PairNote {
-  a: string
-  b: string
+  a: Bi
+  b: Bi
   kind: string
   score: number
 }
@@ -95,7 +96,7 @@ export interface CabinetEval {
   tense: PairNote[]
   quadras: Record<QuadraId, number>
   filledCount: number
-  warnings: string[]
+  warnings: Bi[]
 }
 
 /** Оценка состава кабинета. na — позиции, которых у правительства
@@ -113,7 +114,7 @@ export function evaluateCabinet(
     : POLITICIANS
   const filled: { pos: Position; pol: Politician }[] = []
   const positions: PositionEval[] = []
-  const warnings: string[] = []
+  const warnings: Bi[] = []
   let compNum = 0, compDen = 0
   let socioNum = 0, socioDen = 0
 
@@ -122,12 +123,12 @@ export function evaluateCabinet(
     if (naSet.has(pos.id)) continue
     if (!polId) {
       positions.push({ posId: pos.id, polId: null, compPct: 0, socioScore: 0, weight: pos.weight })
-      warnings.push(`Вакантно: ${pos.title}`)
+      warnings.push({ uk: `Вакансія: ${pos.title.uk}`, ru: `Вакантно: ${pos.title.ru}` })
       continue
     }
     const pol = lookup[polId]
     if (!pol) {
-      warnings.push(`Нет профиля: ${polId}`)
+      warnings.push({ uk: `Немає профілю: ${polId}`, ru: `Нет профиля: ${polId}` })
       continue
     }
     const effW = pos.weight * (CONTEXT_WEIGHT[context][pos.id] ?? 1)
@@ -190,9 +191,9 @@ export function evaluateCabinet(
 
 export interface RankedCabinet {
   id: string
-  name: string
+  name: Bi
   ord: number
-  period: string
+  period: Bi
   context: ContextKind
   isPlayer?: boolean
   eval: CabinetEval
@@ -211,7 +212,7 @@ export function rankAll(
   const hasAny = Object.values(playerMembers).some(Boolean)
   if (hasAny) {
     list.push({
-      id: '__player__', name: 'Ваш кабинет', ord: 24, period: 'проект',
+      id: '__player__', name: { uk: 'Ваш уряд', ru: 'Ваш кабинет' }, ord: 24, period: { uk: 'проєкт', ru: 'проект' },
       context, isPlayer: true,
       eval: evaluateCabinet(playerMembers, context, [], extra),
     })
