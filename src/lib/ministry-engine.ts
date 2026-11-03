@@ -13,7 +13,7 @@
 import { TYPES, type SocioType, type QuadraId } from './socionics-data'
 import { relationBetween, PAIR_SCORE } from './relations'
 import {
-  POSITIONS, POLITICIANS, CABINETS,
+  POSITIONS, POLITICIANS, CABINETS, isEligible,
   type Position, type Politician, type CompKey, type ContextKind,
 } from './ministry-data'
 
@@ -99,13 +99,18 @@ export interface CabinetEval {
 }
 
 /** Оценка состава кабинета. na — позиции, которых у правительства
- *  ещё не существовало (не штрафуются и не участвуют в знаменателе). */
+ *  ещё не существовало (не штрафуются и не участвуют в знаменателе).
+ *  extra — личные кандидаты игрока (свой пул поверх базового). */
 export function evaluateCabinet(
   members: Record<string, string | null>,
   context: ContextKind,
   na: string[] = [],
+  extra: Politician[] = [],
 ): CabinetEval {
   const naSet = new Set(na)
+  const lookup: Record<string, Politician> = extra.length
+    ? { ...POLITICIANS, ...Object.fromEntries(extra.map(p => [p.id, p])) }
+    : POLITICIANS
   const filled: { pos: Position; pol: Politician }[] = []
   const positions: PositionEval[] = []
   const warnings: string[] = []
@@ -120,7 +125,7 @@ export function evaluateCabinet(
       warnings.push(`Вакантно: ${pos.title}`)
       continue
     }
-    const pol = POLITICIANS[polId]
+    const pol = lookup[polId]
     if (!pol) {
       warnings.push(`Нет профиля: ${polId}`)
       continue
@@ -194,6 +199,7 @@ export interface RankedCabinet {
 export function rankAll(
   playerMembers: Record<string, string | null>,
   context: ContextKind,
+  extra: Politician[] = [],
 ): RankedCabinet[] {
   const list: RankedCabinet[] = CABINETS.map(c => ({
     id: c.id, name: c.name, ord: c.ord, period: c.period, context: c.context,
@@ -204,17 +210,22 @@ export function rankAll(
     list.push({
       id: '__player__', name: 'Ваш кабинет', ord: 24, period: 'проект',
       context, isPlayer: true,
-      eval: evaluateCabinet(playerMembers, context),
+      eval: evaluateCabinet(playerMembers, context, [], extra),
     })
   }
   return list.sort((a, b) => b.eval.total - a.eval.total)
 }
 
-/** Лучшие кандидаты на должность по совокупной посадке */
-export function topForPosition(posId: string, n = 5): { pol: Politician; score: number }[] {
+/** Лучшие кандидаты на должность по совокупной посадке.
+ *  pool — доступный пул (по умолчанию — все политики датасета);
+ *  отбираются только кандидаты, допустимые на должность по сферам. */
+export function topForPosition(
+  posId: string, n = 5, pool: Politician[] = Object.values(POLITICIANS),
+): { pol: Politician; score: number }[] {
   const pos = POSITIONS.find(p => p.id === posId)
   if (!pos) return []
-  return Object.values(POLITICIANS)
+  return pool
+    .filter(pol => isEligible(pol, pos))
     .map(pol => ({ pol, score: 0.6 * compFit(pol, pos) + 0.4 * (socioFit(pol.type, pos) / 10) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, n)
